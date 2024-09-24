@@ -1,64 +1,107 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { Sky, PointerLockControls } from "@react-three/drei";
-import { Physics } from "@react-three/cannon";
 import { Suspense, useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import dynamic from "next/dynamic";
 
-import Player from "@/components/Player";
-import Ground from "@/components/Ground";
-import Cubes from "@/components/Cubes";
-import { useStore } from "@/hooks/useStore";
+// Dynamic imports for all components
+const Canvas = dynamic(
+  () => import("@react-three/fiber").then((mod) => mod.Canvas),
+  { ssr: false }
+);
+const Sky = dynamic(() => import("@react-three/drei").then((mod) => mod.Sky), {
+  ssr: false,
+});
+const Physics = dynamic(
+  () => import("@react-three/cannon").then((mod) => mod.Physics),
+  { ssr: false }
+);
+const Button = dynamic(
+  () => import("@/components/ui/button").then((mod) => mod.Button),
+  { ssr: false }
+);
+const TooltipProvider = dynamic(
+  () => import("@/components/ui/tooltip").then((mod) => mod.TooltipProvider),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import("@/components/ui/tooltip").then((mod) => mod.Tooltip),
+  { ssr: false }
+);
+const TooltipTrigger = dynamic(
+  () => import("@/components/ui/tooltip").then((mod) => mod.TooltipTrigger),
+  { ssr: false }
+);
+const TooltipContent = dynamic(
+  () => import("@/components/ui/tooltip").then((mod) => mod.TooltipContent),
+  { ssr: false }
+);
+
+const Ground = dynamic(() => import("@/components/Ground"), { ssr: false });
+const Cubes = dynamic(() => import("@/components/Cubes"), { ssr: false });
+const Player = dynamic(() => import("@/components/Player"), { ssr: false });
+const PointerLockControls = dynamic(
+  () => import("@react-three/drei").then((mod) => mod.PointerLockControls),
+  { ssr: false }
+);
+
+const useStore = dynamic(
+  () => import("@/hooks/useStore").then((mod) => mod.useStore),
+  { ssr: false }
+);
 
 const textures = ["dirt", "grass", "wood", "glass", "log"];
 
 export default function Home() {
-  const addCube = useStore((state) => state.addCube);
-  const setTexture = useStore((state) => state.setTexture);
+  const [addCube, setAddCube] = useState(null);
+  const [setTexture, setSetTexture] = useState(null);
   const [activeTextureIndex, setActiveTextureIndex] = useState(0);
+
+  useEffect(() => {
+    // Load store hook dynamically
+    import("@/hooks/useStore").then((mod) => {
+      const store = mod.useStore.getState();
+      setAddCube(() => store.addCube);
+      setSetTexture(() => store.setTexture);
+    });
+  }, []);
 
   const selectTexture = useCallback(
     (index) => {
       setActiveTextureIndex(index);
-      setTexture(textures[index]);
+      setTexture && setTexture(textures[index]);
     },
     [setTexture]
   );
 
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      const key = e.key;
-      if (key >= "1" && key <= "5") {
-        const index = parseInt(key) - 1;
-        selectTexture(index);
-      }
-    };
+    if (typeof window !== "undefined") {
+      const handleKeyDown = (e) => {
+        const key = e.key;
+        if (key >= "1" && key <= "5") {
+          const index = parseInt(key) - 1;
+          selectTexture(index);
+        }
+      };
 
-    const handleWheel = (e) => {
-      e.preventDefault();
-      setActiveTextureIndex((prevIndex) => {
-        const newIndex =
-          (prevIndex + (e.deltaY > 0 ? 1 : -1) + textures.length) %
-          textures.length;
-        setTexture(textures[newIndex]);
-        return newIndex;
-      });
-    };
+      const handleWheel = (e) => {
+        e.preventDefault();
+        setActiveTextureIndex((prevIndex) => {
+          const newIndex =
+            (prevIndex + (e.deltaY > 0 ? 1 : -1) + textures.length) %
+            textures.length;
+          setTexture && setTexture(textures[newIndex]);
+          return newIndex;
+        });
+      };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel, { passive: false });
+      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("wheel", handleWheel, { passive: false });
 
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
-    };
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("wheel", handleWheel);
+      };
+    }
   }, [selectTexture, setTexture]);
 
   return (
